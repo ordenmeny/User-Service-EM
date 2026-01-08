@@ -1,5 +1,8 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import (
+    async_sessionmaker,
+    AsyncSession,
+    create_async_engine,
+)
 from typing import AsyncGenerator
 from app.core.config import settings
 
@@ -7,7 +10,7 @@ from app.core.config import settings
 class SessionManager:
     def __init__(self, db_url: str, echo: bool):
         self.db_url = db_url
-        self.engine = create_engine(
+        self.engine = create_async_engine(
             self.db_url,
             echo=echo,
         )

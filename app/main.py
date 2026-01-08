@@ -1,9 +1,9 @@
 from fastapi import FastAPI
-from app.api.auth.views import router as users_router
+from app.api.auth.views import auth_router
 import uvicorn
 
 app = FastAPI()
-app.include_router(users_router)
+app.include_router(auth_router)
 
 
 if __name__ == "__main__":
