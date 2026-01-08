@@ -12,6 +12,7 @@ class UserRead(BaseModel):
     is_active: bool = True
     first_name: str
     last_name: str
+    patronymic: str
 
     model_config = {
         'from_attributes': True,
@@ -38,16 +39,6 @@ class UserLoginSchema(BaseModel):
     password: str
 
 
-# user = UserCreate(
-#     first_name="Test name",
-#     last_name="Test surname",
-#     patronymic="Test patronymic",
-#     email="test@example.com",
-#     password="securepassword123",
-#     password2="securepassword1234",
-# )
-#
-#
-# user_dict = user.model_dump()  # to python-dict.
-# print(user_dict)
-# model_user = UserCreate(**dict(user_dict))  # to pydantic model.
+class JWTToken(BaseModel):
+    token: str
+    token_type: str

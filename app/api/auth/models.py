@@ -1,6 +1,6 @@
 from app.db.base import Base
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String
+from sqlalchemy import String, false
 
 
 class User(Base):
@@ -15,3 +15,8 @@ class User(Base):
         unique=True,
     )
     password: Mapped[str]
+    superuser: Mapped[bool] = mapped_column(
+        nullable=False,
+        default=False,
+        server_default=false(),
+    )

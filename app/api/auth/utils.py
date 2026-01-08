@@ -2,14 +2,15 @@ import jwt
 from app.core.config import settings
 import bcrypt
 from datetime import datetime, UTC
+from .custom_types import JWTTokenStr
 
 
 def encode_jwt(
     payload: dict,
     private_key: str = settings.auth_jwt.private_key_path.read_text(),
     algorithm: str = settings.auth_jwt.algorithm,
-    exp=settings.auth_jwt.access_token_exp,
-):
+    exp=settings.auth_jwt.access_token_lifetime,
+) -> JWTTokenStr:
     to_encode = payload.copy()
     now = datetime.now(UTC)
     exp = now + exp
@@ -24,12 +25,13 @@ def encode_jwt(
 
 
 def decode_jwt(
-    token: str,
+    token: JWTTokenStr,
     public_key: str = settings.auth_jwt.public_key_path.read_text(),
     algorithm: str = settings.auth_jwt.algorithm,
-):
+) -> dict:
+
     return jwt.decode(
-        jwt=token,
+        jwt=token.encode("utf-8"),
         key=public_key,
         algorithms=[algorithm],
     )
