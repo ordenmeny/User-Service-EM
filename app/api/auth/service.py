@@ -99,7 +99,7 @@ class UserService:
             session=session,
             user_schema=user_schema,
             user_to_update=user_to_update,
-            exclude_fields={"email", "password"}
+            exclude_fields={"email", "password"},
         )
 
         return updated_user

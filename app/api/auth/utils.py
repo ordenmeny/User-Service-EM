@@ -4,6 +4,10 @@ import bcrypt
 from datetime import datetime, UTC
 from .custom_types import JWTTokenStr
 
+from fastapi.responses import JSONResponse
+from fastapi import HTTPException, status
+from jwt.exceptions import ExpiredSignatureError
+
 
 def encode_jwt(
     payload: dict,
@@ -17,11 +21,12 @@ def encode_jwt(
 
     to_encode.update({"exp": exp, "iat": now})
 
-    return jwt.encode(
+    token = jwt.encode(
         payload=to_encode,
         key=private_key,
         algorithm=algorithm,
     )
+    return token
 
 
 def decode_jwt(
@@ -30,11 +35,12 @@ def decode_jwt(
     algorithm: str = settings.auth_jwt.algorithm,
 ) -> dict:
 
-    return jwt.decode(
+    decode = jwt.decode(
         jwt=token.encode("utf-8"),
         key=public_key,
         algorithms=[algorithm],
     )
+    return decode
 
 
 def hash_password(
