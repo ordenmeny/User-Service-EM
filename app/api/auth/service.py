@@ -1,10 +1,19 @@
 from fastapi import HTTPException, status
-from .schemas import UserCreate, UserRead, JWTToken, UserUpdate, UserLoginSchema
+from .schemas import (
+    UserCreate,
+    UserRead,
+    JWTToken,
+    UserUpdate,
+    UserLoginSchema,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from .utils import encode_jwt, check_password, decode_jwt
 from .dao import UserDAO
 from .models import User
 from .custom_types import JWTTokenStr
+from app.core.custom_exceptions import InvalidCredentialsError
+from .base_dao import BaseUserDAO
+from typing import Type
 
 
 class AuthService:
@@ -23,23 +32,20 @@ class AuthService:
 
 
 class UserService:
-    user_dao = UserDAO
+    user_dao: Type[BaseUserDAO[User, UserUpdate]] = UserDAO
 
     @classmethod
     async def login(cls, session: AsyncSession, user: UserLoginSchema) -> JWTToken:
         user_db = await cls.user_dao.get_user_by_email(session, user.email)
 
         if user_db is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+            raise InvalidCredentialsError()
 
         input_password = user.password
         hashed_password = str(user_db.password)
 
         if not check_password(input_password, hashed_password):
-            return {"error": "password not correct"}
+            raise InvalidCredentialsError()
 
         access_token = await AuthService.create_token(user_db)
 
@@ -92,7 +98,7 @@ class UserService:
         session: AsyncSession,
         token: JWTTokenStr,
         user_schema: UserUpdate,
-    ):
+    ) -> User:
         user_to_update = await cls.get_user_by_token(session, token)
 
         updated_user = await UserDAO.update(
@@ -101,5 +107,18 @@ class UserService:
             user_to_update=user_to_update,
             exclude_fields={"email", "password"},
         )
+
+        input_email = user_schema.email
+        old_email = updated_user.email
+
+        if input_email and input_email != old_email:
+            user_exists = await cls.user_dao.get_user_by_email(
+                session=session, email=input_email
+            )
+            if user_exists:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="User with this email already exists",
+                )
 
         return updated_user
