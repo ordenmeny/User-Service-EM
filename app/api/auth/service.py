@@ -87,10 +87,18 @@ class UserService:
     ):
         payload = decode_jwt(token=token)
 
-        return await cls.user_dao.get_user_by_email(
+        user = await cls.user_dao.get_user_by_email(
             session,
             payload.get("email"),
         )
+
+        if user is None:
+            raise HTTPException(
+                status_code=401,
+                detail="User not found, you need to login"
+            )
+
+        return user
 
     @classmethod
     async def update_user_by_token(
@@ -122,3 +130,16 @@ class UserService:
                 )
 
         return updated_user
+
+    @classmethod
+    async def soft_delete_user_by_token(
+        cls,
+        session: AsyncSession,
+        token: JWTTokenStr,
+    ) -> None:
+        user_to_delete = await cls.get_user_by_token(session, token)
+
+        user_to_delete.is_active = False
+
+        await session.commit()
+        await session.flush(user_to_delete)
