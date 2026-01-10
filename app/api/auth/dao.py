@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from .models import User
 from .utils import hash_password
-from pydantic import BaseModel
+from app.core.custom_exceptions import UserNotActiveException
 
 
 class UserDAO:
@@ -26,10 +26,7 @@ class UserDAO:
             )
 
         if not user.is_active:
-            raise HTTPException(
-                status_code=403,
-                detail="User is not active",
-            )
+            raise UserNotActiveException
 
         return user
 
