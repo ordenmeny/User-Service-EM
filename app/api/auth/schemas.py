@@ -16,7 +16,7 @@ class UserRead(BaseModel):
     patronymic: str
 
     model_config = {
-        'from_attributes': True,
+        "from_attributes": True,
     }
 
 
@@ -35,6 +35,17 @@ class UserCreate(BaseModel):
         return self
 
 
+class UserUpdate(BaseModel):
+    email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    patronymic: str | None = None
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
 class UserLoginSchema(BaseModel):
     email: str
     password: str
@@ -43,3 +54,8 @@ class UserLoginSchema(BaseModel):
 class JWTToken(BaseModel):
     token: str
     token_type: str
+
+
+class OAuthTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"

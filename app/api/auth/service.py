@@ -1,9 +1,10 @@
 from fastapi import HTTPException, status
-from .schemas import UserCreate, UserRead, JWTToken
+from .schemas import UserCreate, UserRead, JWTToken, UserUpdate, UserLoginSchema
 from sqlalchemy.ext.asyncio import AsyncSession
 from .utils import encode_jwt, check_password, decode_jwt
 from .dao import UserDAO
 from .models import User
+from .custom_types import JWTTokenStr
 
 
 class AuthService:
@@ -12,6 +13,7 @@ class AuthService:
         payload = {
             "sub": str(user_db.id),
             "email": user_db.email,
+            "is_active": user_db.is_active,
         }
 
         return JWTToken(
@@ -24,8 +26,7 @@ class UserService:
     user_dao = UserDAO
 
     @classmethod
-    async def login(cls, session: AsyncSession, user: UserRead) -> JWTToken:
-
+    async def login(cls, session: AsyncSession, user: UserLoginSchema) -> JWTToken:
         user_db = await cls.user_dao.get_user_by_email(session, user.email)
 
         if user_db is None:
@@ -76,7 +77,7 @@ class UserService:
     async def get_user_by_token(
         cls,
         session: AsyncSession,
-        token: JWTToken,
+        token: JWTTokenStr,
     ):
         payload = decode_jwt(token=token)
 
@@ -84,3 +85,21 @@ class UserService:
             session,
             payload.get("email"),
         )
+
+    @classmethod
+    async def update_user_by_token(
+        cls,
+        session: AsyncSession,
+        token: JWTTokenStr,
+        user_schema: UserUpdate,
+    ):
+        user_to_update = await cls.get_user_by_token(session, token)
+
+        updated_user = await UserDAO.update(
+            session=session,
+            user_schema=user_schema,
+            user_to_update=user_to_update,
+            exclude_fields={"email", "password"}
+        )
+
+        return updated_user
