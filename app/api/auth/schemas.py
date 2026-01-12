@@ -9,7 +9,8 @@ from pydantic import (
 class UserRead(BaseModel):
     id: int
     email: EmailStr
-    is_active: bool = True
+    is_active: bool
+    superuser: bool
     first_name: str
     last_name: str
     patronymic: str

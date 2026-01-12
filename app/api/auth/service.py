@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from .schemas import UserCreate, UserRead, JWTToken
 from sqlalchemy.ext.asyncio import AsyncSession
-from .utils import encode_jwt, check_password
+from .utils import encode_jwt, check_password, decode_jwt
 from .dao import UserDAO
 from .models import User
 
@@ -71,3 +71,16 @@ class UserService:
             "access_token": access_token,
             "user": UserRead.model_validate(user_db),
         }
+
+    @classmethod
+    async def get_user_by_token(
+        cls,
+        session: AsyncSession,
+        token: JWTToken,
+    ):
+        payload = decode_jwt(token=token)
+
+        return await cls.user_dao.get_user_by_email(
+            session,
+            payload.get("email"),
+        )

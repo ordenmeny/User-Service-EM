@@ -1,8 +1,7 @@
 from fastapi import APIRouter
 from app.db.dependencies import SessionDep
-from .schemas import UserLoginSchema, UserCreate, JWTToken
+from .schemas import UserLoginSchema, UserCreate, JWTToken, UserRead
 from .dependencies import TokenDep
-from .utils import decode_jwt
 from .service import UserService
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
@@ -13,12 +12,10 @@ async def register(
     session: SessionDep,
     user_schema: UserCreate,
 ):
-    user = await UserService.register_new_user(
+    return await UserService.register_new_user(
         session,
         user_schema,
     )
-
-    return user
 
 
 @auth_router.post("/login")
@@ -26,14 +23,18 @@ async def login(
     session: SessionDep,
     user: UserLoginSchema,
 ) -> JWTToken:
-    token = await UserService.login(session, user)
-    return token
+    return await UserService.login(session, user)
 
 
-@auth_router.get("/me")
+@auth_router.get(
+    "/me",
+    response_model=UserRead,
+)
 async def me(
+    session: SessionDep,
     access_token: TokenDep,
 ):
-    payload = decode_jwt(token=access_token)
-
-    return payload
+    return await UserService.get_user_by_token(
+        session,
+        access_token,
+    )
