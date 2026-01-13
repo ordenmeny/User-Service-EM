@@ -26,11 +26,7 @@ class SessionManager:
             raise RuntimeError("Database session factory is not initialized.")
 
         async with self.session_factory() as session:
-            try:
-                yield session
-            except Exception as e:
-                await session.rollback()
-                raise RuntimeError(f"Database session error: {e!r}") from e
+            yield session
 
 
 sessionmanager = SessionManager(
