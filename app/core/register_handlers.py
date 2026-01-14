@@ -1,19 +1,21 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import ORJSONResponse
-from jwt.exceptions import ExpiredSignatureError
+from jwt.exceptions import PyJWTError
 from sqlalchemy.exc import DatabaseError
 import logging
-from app.core.custom_exceptions import UserNotActiveException
+from app.core.custom_exceptions import (
+    UserNotActiveException,
+    InvalidCredentialsError,
+)
 
 logger = logging.getLogger(__name__)
 
 
-
 def register_exception_handlers(app: FastAPI):
-    @app.exception_handler(ExpiredSignatureError)
+    @app.exception_handler(PyJWTError)
     async def expired_signature_error(
         request: Request,
-        exc: ExpiredSignatureError,
+        exc: PyJWTError,
     ):
         return ORJSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -41,10 +43,20 @@ def register_exception_handlers(app: FastAPI):
         exc: UserNotActiveException,
     ):
         return ORJSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=exc.code,
             content={
-                "detail": "user not active",
+                "detail": exc.message,
             },
         )
 
-
+    @app.exception_handler(InvalidCredentialsError)
+    async def handle_exception(
+        request: Request,
+        exc: InvalidCredentialsError,
+    ):
+        return ORJSONResponse(
+            status_code=exc.code,
+            content={
+                "detail": exc.message,
+            },
+        )
