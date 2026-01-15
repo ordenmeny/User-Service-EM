@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Response, status
-from fastapi.responses import ORJSONResponse, JSONResponse
-from app.db.dependencies import SessionDep
+from fastapi.responses import ORJSONResponse
 from .schemas import (
     UserLoginSchema,
     UserCreate,
@@ -11,6 +10,9 @@ from .schemas import (
 )
 from .dependencies import TokenDep, FormDep
 from .service import UserService
+from .dependencies import admin_required
+from .dependencies import CurrentUserDep
+from app.db.dependencies import SessionDep
 
 auth_router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -36,14 +38,13 @@ async def login(
 
 @auth_router.post("/token", response_model=OAuthTokenResponse)
 async def login_token(
-    session: SessionDep,
     form: FormDep,
 ) -> JWTToken:
     user = UserLoginSchema(
         email=form.username,
         password=form.password,
     )
-    token = await UserService.login(session, user)
+    token = await UserService.login(user)
 
     response = OAuthTokenResponse(access_token=token.token, token_type="bearer")
 
@@ -55,13 +56,9 @@ async def login_token(
     response_model=UserRead,
 )
 async def get_current_user(
-    session: SessionDep,
-    access_token: TokenDep,
+    current_user: CurrentUserDep,
 ):
-    return await UserService.get_user_by_token(
-        session,
-        access_token,
-    )
+    return current_user
 
 
 @auth_router.patch(
@@ -70,12 +67,12 @@ async def get_current_user(
 )
 async def update_current_user(
     session: SessionDep,
-    access_token: TokenDep,
     user_schema: UserUpdate,
+    current_user: CurrentUserDep,
 ):
     return await UserService.update_user_by_token(
         session,
-        access_token,
+        current_user,
         user_schema,
     )
 
@@ -95,9 +92,11 @@ async def soft_delete_account(
 
     await UserService.soft_delete_user_by_token(session, access_token)
 
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={
-            "detail": "user soft deleted"
-        }
+    return ORJSONResponse(
+        status_code=status.HTTP_200_OK, content={"detail": "user soft deleted"}
     )
+
+
+@auth_router.get("/for-admin", dependencies=[admin_required])
+async def for_admin_only():
+    return {"message": "this content for admin only, you are an admin."}

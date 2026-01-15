@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 from .schemas import (
     UserCreate,
     UserRead,
@@ -6,7 +7,6 @@ from .schemas import (
     UserUpdate,
     UserLoginSchema,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 from .utils import encode_jwt, check_password, decode_jwt
 from .dao import UserDAO
 from .models import User
@@ -35,7 +35,11 @@ class UserService:
     user_dao: Type[BaseUserDAO[User, UserUpdate]] = UserDAO
 
     @classmethod
-    async def login(cls, session: AsyncSession, user: UserLoginSchema) -> JWTToken:
+    async def login(
+        cls,
+        session: AsyncSession,
+        user: UserLoginSchema,
+    ) -> JWTToken:
         user_db = await cls.user_dao.get_user_by_email(session, user.email)
 
         if user_db is None:
@@ -84,7 +88,7 @@ class UserService:
         cls,
         session: AsyncSession,
         token: JWTTokenStr,
-    ):
+    ) -> User:
         payload = decode_jwt(token=token)
 
         user = await cls.user_dao.get_user_by_email(
@@ -94,8 +98,7 @@ class UserService:
 
         if user is None:
             raise HTTPException(
-                status_code=401,
-                detail="User not found, you need to login"
+                status_code=401, detail="User not found, you need to login"
             )
 
         return user
@@ -104,11 +107,9 @@ class UserService:
     async def update_user_by_token(
         cls,
         session: AsyncSession,
-        token: JWTTokenStr,
+        user_to_update: User,
         user_schema: UserUpdate,
     ) -> User:
-        user_to_update = await cls.get_user_by_token(session, token)
-
         updated_user = await UserDAO.update(
             session=session,
             user_schema=user_schema,

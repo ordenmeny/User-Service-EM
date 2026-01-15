@@ -15,7 +15,7 @@ class User(Base):
         unique=True,
     )
     password: Mapped[str]
-    superuser: Mapped[bool] = mapped_column(
+    is_admin: Mapped[bool] = mapped_column(
         nullable=False,
         default=False,
         server_default=false(),

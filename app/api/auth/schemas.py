@@ -10,7 +10,7 @@ class UserRead(BaseModel):
     id: int
     email: EmailStr
     is_active: bool
-    superuser: bool
+    is_admin: bool
     first_name: str
     last_name: str
     patronymic: str
