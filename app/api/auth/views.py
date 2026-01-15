@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Response, status
+from fastapi.responses import ORJSONResponse, JSONResponse
 from app.db.dependencies import SessionDep
 from .schemas import (
     UserLoginSchema,
@@ -6,7 +7,7 @@ from .schemas import (
     JWTToken,
     UserRead,
     UserUpdate,
-    OAuthTokenResponse
+    OAuthTokenResponse,
 )
 from .dependencies import TokenDep, FormDep
 from .service import UserService
@@ -44,10 +45,7 @@ async def login_token(
     )
     token = await UserService.login(session, user)
 
-    response = OAuthTokenResponse(
-        access_token=token.token,
-        token_type="bearer"
-    )
+    response = OAuthTokenResponse(access_token=token.token, token_type="bearer")
 
     return response
 
@@ -85,4 +83,21 @@ async def update_current_user(
 @auth_router.post("/logout")
 async def logout():
     # Удаление refresh_token из httponly-кук.
-    return Response(status_code=200)
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@auth_router.delete("/me")
+async def soft_delete_account(
+    session: SessionDep,
+    access_token: TokenDep,
+):
+    await logout()
+
+    await UserService.soft_delete_user_by_token(session, access_token)
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "detail": "user soft deleted"
+        }
+    )
