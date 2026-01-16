@@ -12,6 +12,7 @@ class AuthJWT(BaseModel):
     public_key_path: Path = BASE_DIR / "certs" / "jwt-public.pem"
     algorithm: str = "RS256"
     access_token_lifetime: int = datetime.timedelta(minutes=60)
+    refresh_token_lifetime: int = datetime.timedelta(days=7)
 
 
 class Settings(BaseSettings):

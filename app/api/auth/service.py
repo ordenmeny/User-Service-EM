@@ -1,4 +1,5 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Response
+from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from .schemas import (
     UserCreate,
@@ -14,16 +15,30 @@ from .custom_types import JWTTokenStr
 from app.core.custom_exceptions import InvalidCredentialsError
 from .base_dao import BaseUserDAO
 from typing import Type
+from app.core.config import settings
 
 
 class AuthService:
     @classmethod
-    async def create_token(cls, user_db: User) -> JWTToken:
+    async def create_token(cls, user_db: User, response: Response) -> JWTToken:
         payload = {
             "sub": str(user_db.id),
             "email": user_db.email,
             "is_active": user_db.is_active,
         }
+
+        refresh_token = encode_jwt(
+            payload, exp=settings.auth_jwt.refresh_token_lifetime
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+            max_age=int(settings.auth_jwt.refresh_token_lifetime.total_seconds()),
+            path="/",
+        )
 
         return JWTToken(
             token=encode_jwt(payload),
@@ -39,6 +54,7 @@ class UserService:
         cls,
         session: AsyncSession,
         user: UserLoginSchema,
+        response: Response,
     ) -> JWTToken:
         user_db = await cls.user_dao.get_user_by_email(session, user.email)
 
@@ -51,15 +67,13 @@ class UserService:
         if not check_password(input_password, hashed_password):
             raise InvalidCredentialsError()
 
-        access_token = await AuthService.create_token(user_db)
+        access_token = await AuthService.create_token(user_db, response)
 
         return access_token
 
     @classmethod
     async def register_new_user(
-        cls,
-        session: AsyncSession,
-        user_schema: UserCreate,
+        cls, session: AsyncSession, user_schema: UserCreate, response: Response
     ):
 
         user = user_schema.model_dump(exclude={"password2"})
@@ -76,7 +90,7 @@ class UserService:
 
         user_db = await cls.user_dao.add_to_db(session, user)
 
-        access_token = await AuthService.create_token(user_db)
+        access_token = await AuthService.create_token(user_db, response)
 
         return {
             "access_token": access_token,
@@ -102,6 +116,14 @@ class UserService:
             )
 
         return user
+
+    @classmethod
+    async def get_user_by_email(
+        cls,
+        session: AsyncSession,
+        email: str,
+    ) -> User:
+        return await cls.user_dao.get_user_by_email(session, email)
 
     @classmethod
     async def update_user_by_token(

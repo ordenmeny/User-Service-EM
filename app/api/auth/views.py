@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Response, status, Cookie
 from fastapi.responses import ORJSONResponse
 from .schemas import (
     UserLoginSchema,
@@ -9,10 +9,11 @@ from .schemas import (
     OAuthTokenResponse,
 )
 from .dependencies import TokenDep, FormDep
-from .service import UserService
+from .service import UserService, AuthService
 from .permissions import admin_required
 from .dependencies import CurrentUserDep
 from app.db.dependencies import SessionDep
+from .utils import encode_jwt, decode_jwt
 
 auth_router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -21,19 +22,20 @@ auth_router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 async def register(
     session: SessionDep,
     user_schema: UserCreate,
+    response: Response,
 ):
     return await UserService.register_new_user(
         session,
         user_schema,
+        response,
     )
 
 
 @auth_router.post("/login")
 async def login(
-    session: SessionDep,
-    user: UserLoginSchema,
+    session: SessionDep, user: UserLoginSchema, response: Response
 ) -> JWTToken:
-    return await UserService.login(session, user)
+    return await UserService.login(session, user, response)
 
 
 @auth_router.post("/token", response_model=OAuthTokenResponse)
@@ -78,9 +80,10 @@ async def update_current_user(
 
 
 @auth_router.post("/logout")
-async def logout():
-    # Удаление refresh_token из httponly-кук.
-    return Response(status_code=status.HTTP_200_OK)
+async def logout(response: Response):
+    response.delete_cookie(key="refresh_token", path="/")
+    response.status_code = status.HTTP_200_OK
+    return {"detail": "logout"}
 
 
 @auth_router.delete("/me")
@@ -95,6 +98,24 @@ async def soft_delete_account(
     return ORJSONResponse(
         status_code=status.HTTP_200_OK, content={"detail": "user soft deleted"}
     )
+
+
+@auth_router.post("/refresh")
+async def refresh_access_token(
+    session: SessionDep,
+    response: Response,
+    refresh_token: str = Cookie(default=None),
+) -> JWTToken:
+    payload = decode_jwt(refresh_token)
+
+    user = await UserService.get_user_by_email(
+        session,
+        payload.get("email"),
+    )
+
+    token = await AuthService.create_token(user, response)
+
+    return token
 
 
 @auth_router.get("/for-admin", dependencies=[admin_required])
