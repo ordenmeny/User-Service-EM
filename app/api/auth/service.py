@@ -93,7 +93,7 @@ class UserService:
         access_token = await AuthService.create_token(user_db, response)
 
         return {
-            "access_token": access_token,
+            "credentials": access_token,
             "user": UserRead.model_validate(user_db),
         }
 

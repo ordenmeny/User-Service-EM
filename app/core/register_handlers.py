@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import ORJSONResponse
+from fastapi.exceptions import RequestValidationError
 from jwt.exceptions import PyJWTError
 from sqlalchemy.exc import DatabaseError
 import logging
@@ -7,6 +8,8 @@ from app.core.custom_exceptions import (
     UserNotActiveException,
     InvalidCredentialsError,
 )
+from fastapi.encoders import jsonable_encoder
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +23,7 @@ def register_exception_handlers(app: FastAPI):
         return ORJSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={
-                "detail": "Неверный токен или срок действия истек",
+                "detail": "Bad credentials",
             },
         )
 
@@ -59,4 +62,19 @@ def register_exception_handlers(app: FastAPI):
             content={
                 "detail": exc.message,
             },
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ):
+        try:
+            type_er = exc.errors()[0].get('type')
+            loc_er = ' '.join(exc.errors()[0].get('loc'))
+        except:
+            type_er = 'ValidationError'
+            loc_er = 'Unknown'
+        return ORJSONResponse(
+            status_code=422,
+            content={"detail": f'{type_er} {loc_er}', "body": exc.body},
         )

@@ -59,3 +59,12 @@ class JWTToken(BaseModel):
 class OAuthTokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class UserReadWithToken(BaseModel):
+    user: UserRead
+    credentials: JWTToken
+
+
+class DetailResponse(BaseModel):
+    detail: str

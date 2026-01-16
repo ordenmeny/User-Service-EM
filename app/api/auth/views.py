@@ -7,6 +7,8 @@ from .schemas import (
     UserRead,
     UserUpdate,
     OAuthTokenResponse,
+    UserReadWithToken,
+    DetailResponse,
 )
 from .dependencies import TokenDep, FormDep
 from .service import UserService, AuthService
@@ -14,11 +16,14 @@ from .permissions import admin_required
 from .dependencies import CurrentUserDep
 from app.db.dependencies import SessionDep
 from .utils import decode_jwt
+from app.api.auth import responses
 
 auth_router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
-@auth_router.post("/register")
+@auth_router.post(
+    "/register", responses=responses.register_response, response_model=UserReadWithToken
+)
 async def register(
     session: SessionDep,
     user_schema: UserCreate,
@@ -31,10 +36,12 @@ async def register(
     )
 
 
-@auth_router.post("/login")
-async def login(
-    session: SessionDep, user: UserLoginSchema, response: Response
-) -> JWTToken:
+@auth_router.post(
+    "/login",
+    responses=responses.login_response,
+    response_model=JWTToken,
+)
+async def login(session: SessionDep, user: UserLoginSchema, response: Response):
     return await UserService.login(session, user, response)
 
 
@@ -55,6 +62,7 @@ async def login_token(
 
 @auth_router.get(
     "/me",
+    responses=responses.get_current_user_response,
     response_model=UserRead,
 )
 async def get_current_user(
@@ -66,6 +74,7 @@ async def get_current_user(
 @auth_router.patch(
     "/me",
     response_model=UserRead,
+    responses=responses.update_current_user_response,
 )
 async def update_current_user(
     session: SessionDep,
@@ -79,14 +88,22 @@ async def update_current_user(
     )
 
 
-@auth_router.post("/logout")
+@auth_router.post(
+    "/logout",
+    response_model=DetailResponse,
+    responses=responses.logout_response,
+)
 async def logout(response: Response):
     response.delete_cookie(key="refresh_token", path="/")
     response.status_code = status.HTTP_200_OK
     return {"detail": "logout"}
 
 
-@auth_router.delete("/me")
+@auth_router.delete(
+    "/me",
+    response_model=DetailResponse,
+    responses=responses.delete_current_user_response,
+)
 async def soft_delete_account(
     session: SessionDep,
     access_token: TokenDep,
@@ -100,7 +117,11 @@ async def soft_delete_account(
     )
 
 
-@auth_router.post("/refresh")
+@auth_router.post(
+    "/refresh",
+    response_model=JWTToken,
+    responses=responses.refresh_response,
+)
 async def refresh_access_token(
     session: SessionDep,
     response: Response,
@@ -118,6 +139,10 @@ async def refresh_access_token(
     return token
 
 
-@auth_router.get("/for-admin", dependencies=[admin_required])
+@auth_router.get(
+    "/for-admin",
+    dependencies=[admin_required],
+    responses=responses.example_admin_resource_response,
+)
 async def for_admin_only():
     return {"message": "this content for admin only, you are an admin."}
