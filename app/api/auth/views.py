@@ -13,7 +13,7 @@ from .service import UserService, AuthService
 from .permissions import admin_required
 from .dependencies import CurrentUserDep
 from app.db.dependencies import SessionDep
-from .utils import encode_jwt, decode_jwt
+from .utils import decode_jwt
 
 auth_router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
