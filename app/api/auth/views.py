@@ -10,7 +10,7 @@ from .schemas import (
 )
 from .dependencies import TokenDep, FormDep
 from .service import UserService
-from .dependencies import admin_required
+from .permissions import admin_required
 from .dependencies import CurrentUserDep
 from app.db.dependencies import SessionDep
 
